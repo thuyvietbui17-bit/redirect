@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>安全跳转 - 页面转换中</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .logo {
+            font-size: 3em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00ccff);
+            width: 0%;
+            animation: progress 3s ease-in-out forwards;
+        }
+        
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        .manual-link {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .manual-link a {
+            color: #ffeb3b;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 20px;
+            background: rgba(255, 235, 59, 0.1);
+            border-radius: 5px;
+            border: 1px solid rgba(255, 235, 59, 0.3);
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .manual-link a:hover {
+            background: rgba(255, 235, 59, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .warning {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .logo {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="logo">🔄</div>
+        <h2 id="title">正在安全跳转...</h2>
+        <p id="subtitle">请稍候，正在为您转换到目标页面</p>
+        
+        <div class="loader" id="loader"></div>
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div id="countdown" style="font-size: 1.2em; margin: 15px 0;">
+            <span id="timer">3</span> 秒后自动跳转
+        </div>
+        
+        <div class="manual-link" id="manualLink" style="display: none;">
+            <p>如果没有自动跳转，请点击下方链接：</p>
+            <a href="#" id="targetLink" target="_blank">🔗 点击访问目标网站</a>
+        </div>
+        
+        <div class="warning">
+            ⚡ 安全提示：本页面提供安全跳转服务
+        </div>
+    </div>
+
+    <script>
+        // 获取URL参数的通用函数
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            // 支持多种参数名
+            const paramNames = ['t', 'link', 'url', 'target', 'redirect', 'goto', 'c'];
+            
+            for (const name of paramNames) {
+                const value = urlParams.get(name);
+                if (value) {
+                    return { param: name, value: value };
+                }
+            }
+            return null;
+        }
+
+        // 解码URL的函数
+        function decodeTargetUrl(encodedUrl) {
+            try {
+                // 尝试Base64解码
+                let decoded = atob(encodedUrl);
+                
+                // 如果需要，再进行URL解码
+                try {
+                    decoded = decodeURIComponent(decoded);
+                } catch (e) {
+                    // 如果URL解码失败，使用原解码结果
+                }
+                
+                return decoded;
+            } catch (e) {
+                console.error('解码失败:', e);
+                try {
+                    // 尝试直接URL解码
+                    return decodeURIComponent(encodedUrl);
+                } catch (e2) {
+                    console.error('URL解码也失败:', e2);
+                    return null;
+                }
+            }
+        }
+
+        // 验证URL的函数
+        function isValidUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.protocol === 'https:' || urlObj.protocol === 'http:';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const container = document.getElementById('container');
+            container.classList.add('error');
+            document.getElementById('title').textContent = '❌ 跳转失败';
+            document.getElementById('subtitle').textContent = message;
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('countdown').style.display = 'none';
+        }
+
+        // 倒计时功能
+        function startCountdown(targetUrl) {
+            let seconds = 3;
+            const timerElement = document.getElementById('timer');
+            const countdownElement = document.getElementById('countdown');
+            
+            const countdown = setInterval(() => {
+                seconds--;
+                timerElement.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(countdown);
+                    countdownElement.textContent = '正在跳转...';
+                    performRedirect(targetUrl);
+                }
+            }, 1000);
+        }
+
+        // 执行跳转
+        function performRedirect(targetUrl) {
+            try {
+                // 使用 window.open 在新标签页打开，更安全
+                const newWindow = window.open(targetUrl, '_blank');
+                
+                // 如果弹窗被阻止，显示手动链接
+                if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                    showManualLink(targetUrl);
+                } else {
+                    // 跳转成功，显示提示
+                    document.getElementById('title').textContent = '✅ 跳转成功';
+                    document.getElementById('subtitle').textContent = '目标页面已在新窗口打开';
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('countdown').textContent = '跳转完成';
+                }
+            } catch (e) {
+                console.error('跳转失败:', e);
+                showManualLink(targetUrl);
+            }
+        }
+
+        // 显示手动链接
+        function showManualLink(targetUrl) {
+            document.getElementById('title').textContent = '⚠️ 需要手动确认';
+            document.getElementById('subtitle').textContent = '为了您的安全，请手动点击下方链接';
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('countdown').style.display = 'none';
+            
+            const manualLink = document.getElementById('manualLink');
+            const targetLink = document.getElementById('targetLink');
+            
+            targetLink.href = targetUrl;
+            targetLink.textContent = `🔗 访问 ${new URL(targetUrl).hostname}`;
+            manualLink.style.display = 'block';
+        }
+
+        // 主要逻辑
+        function initRedirect() {
+            const params = getUrlParams();
+            
+            if (!params) {
+                showError('缺少跳转参数，请检查链接是否正确');
+                return;
+            }
+
+            const targetUrl = decodeTargetUrl(params.value);
+            
+            if (!targetUrl) {
+                showError('无法解析目标链接，请检查链接格式');
+                return;
+            }
+
+            if (!isValidUrl(targetUrl)) {
+                showError('目标链接格式不正确，仅支持 HTTP/HTTPS 链接');
+                return;
+            }
+
+            console.log('目标URL:', targetUrl);
+            
+            // 开始倒计时和跳转流程
+            startCountdown(targetUrl);
+            
+            // 同时准备手动链接（以防自动跳转失败）
+            setTimeout(() => {
+                showManualLink(targetUrl);
+            }, 4000);
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', initRedirect);
+        
+        // 防止页面被嵌入iframe（安全考虑）
+        if (window.top !== window.self) {
+            window.top.location = window.self.location;
+        }
+    </script>
+</body>
+</html>
