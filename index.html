@@ -39,8 +39,12 @@
         const time = params.get('time') || params.get('t');
         const expire = parseInt(params.get('expire') || params.get('e') || '5');
         
+        // 调试信息
+        console.log('原始参数:', { url, time, expire });
+        
         // 检查参数和过期时间
         if (!url || !time) {
+            console.log('缺少必要参数');
             document.getElementById('loader').style.display = 'none';
             document.getElementById('expired').style.display = 'block';
         } else {
@@ -48,22 +52,41 @@
             const createTime = parseInt(time, 36);
             const expireTime = createTime + (expire * 60 * 1000);
             
+            console.log('时间检查:', { now, createTime, expireTime, isExpired: now > expireTime });
+            
             if (now > expireTime) {
+                console.log('链接已过期');
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('expired').style.display = 'block';
             } else {
                 // 延迟加载
                 setTimeout(() => {
                     try {
-                        // 解码URL
-                        const paddedUrl = url + '=='.slice(0, (4 - url.length % 4) % 4);
-                        const targetUrl = atob(paddedUrl);
+                        // 解码URL - 修复解码逻辑
+                        let targetUrl;
+                        try {
+                            // 补齐Base64填充
+                            const paddedUrl = url + '=='.slice(0, (4 - url.length % 4) % 4);
+                            targetUrl = atob(paddedUrl);
+                        } catch (e) {
+                            // 如果解码失败，直接使用原URL
+                            console.log('Base64解码失败，使用原URL:', e);
+                            targetUrl = url;
+                        }
+                        
+                        // 确保URL有协议
+                        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                            targetUrl = 'https://' + targetUrl;
+                        }
+                        
+                        console.log('目标URL:', targetUrl);
                         const iframe = document.getElementById('frame');
                         
                         // 设置iframe源
                         iframe.src = targetUrl;
                         
                         iframe.onload = () => {
+                            console.log('iframe加载完成');
                             document.getElementById('loader').style.display = 'none';
                             iframe.classList.add('show');
                             
@@ -71,13 +94,22 @@
                             setTimeout(setupAdvancedProtection, 1000);
                         };
                         
+                        // 添加错误处理
+                        iframe.onerror = () => {
+                            console.log('iframe加载错误');
+                            document.getElementById('loader').style.display = 'none';
+                            document.getElementById('expired').style.display = 'block';
+                        };
+                        
+                        // 超时处理 - 减少到5秒
                         setTimeout(() => {
                             if (!iframe.classList.contains('show')) {
+                                console.log('加载超时，强制显示');
                                 document.getElementById('loader').style.display = 'none';
                                 iframe.classList.add('show');
                                 setupAdvancedProtection();
                             }
-                        }, 10000);
+                        }, 5000);
                         
                     } catch (e) {
                         document.getElementById('loader').style.display = 'none';
