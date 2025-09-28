@@ -1,144 +1,275 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>安全访问中...</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全访问</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; }
-        
-        .loading { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex; align-items: center; justify-content: center; z-index: 9999;
-        }
-        .loading.hide { opacity: 0; pointer-events: none; }
-        .loading-content { text-align: center; color: white; padding: 40px; }
+        body { margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); 
+               height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .loader { text-align: center; color: white; font-family: Arial; }
         .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3);
-                   border-top: 3px solid #fff; border-radius: 50%; 
+                   border-top: 3px solid white; border-radius: 50%; 
                    animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .main { position: fixed; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
-        .main.show { opacity: 1; }
-        iframe { width: 100%; height: 100%; border: none; }
-        
-        .expired { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f5f5f5; display: none; align-items: center; justify-content: center;
-        }
-        .expired-content { text-align: center; padding: 40px; background: white; 
-                           border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        iframe { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                 border: none; opacity: 0; transition: opacity 0.5s; }
+        iframe.show { opacity: 1; }
+        .expired { display: none; text-align: center; color: white; }
     </style>
 </head>
 <body>
-    <div class="loading" id="loading">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <div>正在建立安全连接...</div>
-        </div>
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <div>正在连接...</div>
     </div>
-
-    <div class="main" id="main">
-        <iframe id="iframe"></iframe>
-    </div>
-
+    
     <div class="expired" id="expired">
-        <div class="expired-content">
-            <h2>🔒 访问已过期</h2>
-            <p style="margin: 20px 0; color: #666;">此链接已超过有效期限，无法继续访问</p>
-            <p style="color: #999; font-size: 14px;">链接有效期：5分钟</p>
-        </div>
+        <h2>链接已过期</h2>
+        <p>此链接已超过有效期</p>
     </div>
+    
+    <iframe id="frame" 
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-pointer-lock"
+            referrerpolicy="no-referrer"></iframe>
 
     <script>
-        // 获取URL参数
-        function getParams() {
-            const params = new URLSearchParams(window.location.search);
-            return {
-                url: params.get('url') || params.get('link') || params.get('target'),
-                time: params.get('time') || params.get('t'),
-                expire: params.get('expire') || params.get('exp')
-            };
-        }
-
-        // Base64解码
-        function decode(str) {
-            try {
-                return decodeURIComponent(atob(str));
-            } catch (e) {
-                return str;
-            }
-        }
-
-        // 检查时间是否过期
-        function isExpired(timestamp, expireMinutes = 5) {
+        // 解析URL参数
+        const params = new URLSearchParams(window.location.search);
+        const url = params.get('url') || params.get('u');
+        const time = params.get('time') || params.get('t');
+        const expire = parseInt(params.get('expire') || params.get('e') || '5');
+        
+        // 检查参数和过期时间
+        if (!url || !time) {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('expired').style.display = 'block';
+        } else {
             const now = Date.now();
-            const created = parseInt(timestamp);
-            const expireTime = created + (expireMinutes * 60 * 1000);
-            return now > expireTime;
-        }
-
-        // 显示过期页面
-        function showExpired() {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('main').style.display = 'none';
-            document.getElementById('expired').style.display = 'flex';
-        }
-
-        // 初始化
-        function init() {
-            const params = getParams();
+            const createTime = parseInt(time, 36);
+            const expireTime = createTime + (expire * 60 * 1000);
             
-            // 检查必要参数
-            if (!params.url || !params.time) {
-                showExpired();
-                return;
-            }
-
-            // 解码URL
-            const targetUrl = decode(params.url);
-            const timestamp = params.time;
-            const expireMinutes = parseInt(params.expire) || 5;
-
-            // 检查是否过期
-            if (isExpired(timestamp, expireMinutes)) {
-                showExpired();
-                return;
-            }
-
-            // 延迟加载目标网站
-            setTimeout(() => {
-                const iframe = document.getElementById('iframe');
-                iframe.src = targetUrl;
-
-                iframe.onload = () => {
-                    document.getElementById('loading').classList.add('hide');
-                    setTimeout(() => {
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('main').classList.add('show');
-                    }, 500);
-                };
-
-                // 超时处理
+            if (now > expireTime) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('expired').style.display = 'block';
+            } else {
+                // 延迟加载
                 setTimeout(() => {
-                    if (!document.getElementById('main').classList.contains('show')) {
-                        document.getElementById('loading').classList.add('hide');
-                        document.getElementById('main').classList.add('show');
+                    try {
+                        // 解码URL
+                        const paddedUrl = url + '=='.slice(0, (4 - url.length % 4) % 4);
+                        const targetUrl = atob(paddedUrl);
+                        const iframe = document.getElementById('frame');
+                        
+                        // 设置iframe源
+                        iframe.src = targetUrl;
+                        
+                        iframe.onload = () => {
+                            document.getElementById('loader').style.display = 'none';
+                            iframe.classList.add('show');
+                            
+                            // 启动增强防跳转
+                            setTimeout(setupAdvancedProtection, 1000);
+                        };
+                        
+                        setTimeout(() => {
+                            if (!iframe.classList.contains('show')) {
+                                document.getElementById('loader').style.display = 'none';
+                                iframe.classList.add('show');
+                                setupAdvancedProtection();
+                            }
+                        }, 10000);
+                        
+                    } catch (e) {
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('expired').style.display = 'block';
                     }
-                }, 10000);
-
-            }, 1500);
-
-            // 设置过期定时器
-            const timeLeft = (parseInt(timestamp) + expireMinutes * 60 * 1000) - Date.now();
-            if (timeLeft > 0) {
-                setTimeout(showExpired, timeLeft);
+                }, 2000);
             }
         }
-
-        window.addEventListener('load', init);
+        
+        // 增强防跳转保护
+        function setupAdvancedProtection() {
+            const iframe = document.getElementById('frame');
+            
+            try {
+                const iframeWindow = iframe.contentWindow;
+                const iframeDoc = iframe.contentDocument;
+                
+                if (iframeDoc) {
+                    // 拦截所有链接点击
+                    iframeDoc.addEventListener('click', function(e) {
+                        const link = e.target.closest('a');
+                        if (link && link.href) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            
+                            // 强制在当前iframe内打开
+                            if (link.target === '_blank' || link.target === '_top' || link.target === '_parent') {
+                                link.target = '_self';
+                            }
+                            
+                            // 在iframe内导航
+                            iframe.src = link.href;
+                            return false;
+                        }
+                    }, true);
+                    
+                    // 拦截表单提交
+                    iframeDoc.addEventListener('submit', function(e) {
+                        const form = e.target;
+                        if (form.target === '_blank' || form.target === '_top' || form.target === '_parent') {
+                            e.preventDefault();
+                            form.target = '_self';
+                            
+                            // 处理表单提交
+                            const formData = new FormData(form);
+                            const action = form.action || iframe.src;
+                            
+                            if (form.method.toLowerCase() === 'post') {
+                                // POST请求处理
+                                fetch(action, {
+                                    method: 'POST',
+                                    body: formData
+                                }).then(response => response.text())
+                                .then(html => {
+                                    const blob = new Blob([html], {type: 'text/html'});
+                                    iframe.src = URL.createObjectURL(blob);
+                                }).catch(() => {
+                                    // 失败时直接提交
+                                    form.submit();
+                                });
+                            } else {
+                                // GET请求处理
+                                const params = new URLSearchParams(formData);
+                                iframe.src = action + '?' + params.toString();
+                            }
+                        }
+                    }, true);
+                    
+                    // 修改所有链接的target属性
+                    const links = iframeDoc.querySelectorAll('a');
+                    links.forEach(link => {
+                        if (link.target === '_blank' || link.target === '_top' || link.target === '_parent') {
+                            link.target = '_self';
+                        }
+                    });
+                    
+                    // 监听新增的链接
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach((mutation) => {
+                            mutation.addedNodes.forEach((node) => {
+                                if (node.nodeType === 1) { // Element node
+                                    const newLinks = node.querySelectorAll ? node.querySelectorAll('a') : [];
+                                    newLinks.forEach(link => {
+                                        if (link.target === '_blank' || link.target === '_top' || link.target === '_parent') {
+                                            link.target = '_self';
+                                        }
+                                    });
+                                }
+                            });
+                        });
+                    });
+                    
+                    observer.observe(iframeDoc, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+                
+                // 拦截window.open调用
+                if (iframeWindow) {
+                    const originalOpen = iframeWindow.open;
+                    iframeWindow.open = function(url, name, features) {
+                        // 在当前iframe内打开
+                        iframe.src = url;
+                        return null;
+                    };
+                    
+                    // 拦截location操作
+                    const originalReplace = iframeWindow.location.replace;
+                    iframeWindow.location.replace = function(url) {
+                        iframe.src = url;
+                    };
+                    
+                    const originalAssign = iframeWindow.location.assign;
+                    iframeWindow.location.assign = function(url) {
+                        iframe.src = url;
+                    };
+                    
+                    // 拦截location.href设置
+                    Object.defineProperty(iframeWindow.location, 'href', {
+                        set: function(url) {
+                            iframe.src = url;
+                        },
+                        get: function() {
+                            return iframe.src;
+                        }
+                    });
+                }
+                
+            } catch (e) {
+                console.log('跨域限制，使用备用保护');
+            }
+            
+            // 全局防跳转保护
+            setupGlobalProtection(iframe);
+        }
+        
+        // 全局保护机制
+        function setupGlobalProtection(iframe) {
+            // 阻止整个页面的导航
+            window.addEventListener('beforeunload', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // 拦截页面级别的链接点击
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (link && link.href && !link.href.startsWith(window.location.origin)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+            
+            // 监控iframe状态
+            setInterval(() => {
+                try {
+                    // 检查iframe是否正常
+                    const iframeDoc = iframe.contentDocument;
+                    if (!iframeDoc && iframe.src && !iframe.src.startsWith('blob:')) {
+                        // iframe可能被重定向，但这是正常的
+                    }
+                } catch (e) {
+                    // 跨域是正常的
+                }
+            }, 2000);
+            
+            // 使用Intersection Observer监控
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (!entry.isIntersecting) {
+                            console.log('iframe状态变化');
+                        }
+                    });
+                });
+                observer.observe(iframe);
+            }
+        }
+        
+        // 页面可见性变化处理
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // 页面重新可见时重新应用保护
+                setTimeout(() => {
+                    const iframe = document.getElementById('frame');
+                    if (iframe.classList.contains('show')) {
+                        setupAdvancedProtection();
+                    }
+                }, 500);
+            }
+        });
     </script>
 </body>
 </html>
