@@ -2,14 +2,15 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Loading</title>
 <style>
-body{margin:0;background:#667eea;display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial}
+*{margin:0;padding:0;box-sizing:border-box}body,html{width:100%;height:100%;overflow:hidden}body{background:#667eea;display:flex;align-items:center;justify-content:center;font-family:Arial}
 .load{color:#fff;text-align:center}
 .spin{width:30px;height:30px;border:2px solid rgba(255,255,255,0.3);border-top:2px solid #fff;border-radius:50%;animation:s 1s linear infinite;margin:0 auto 15px}
 @keyframes s{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 iframe{position:fixed;top:0;left:0;width:100%;height:100%;border:none;display:none}
-.err{display:none}
+.err{display:none}@media(max-width:768px){.spin{width:25px;height:25px}.load{font-size:14px;padding:0 20px}}
 </style>
 </head>
 <body>
@@ -31,10 +32,11 @@ setTimeout(()=>{
 try{
 const r=atob(a),i=document.getElementById('f');
 i.src=r;
-i.onload=()=>{document.getElementById('l').style.display='none';i.style.display='block'};
-setTimeout(()=>{if(i.style.display==='none'){document.getElementById('l').style.display='none';i.style.display='block'}},8000)
+i.onload=()=>{document.getElementById('l').style.display='none';i.style.display='block';p()};
+setTimeout(()=>{if(i.style.display==='none'){document.getElementById('l').style.display='none';i.style.display='block';p()}},8000)
 }catch(e){document.getElementById('e').style.display='block';document.getElementById('l').style.display='none'}
 },1500)}}
+function p(){try{const d=document.getElementById('f').contentDocument;if(d){d.addEventListener('click',e=>{const l=e.target.closest('a');if(l&&l.href){e.preventDefault();document.getElementById('f').src=l.href}},true);d.addEventListener('submit',e=>{const f=e.target;if(f.target==='_blank'||f.target==='_top'){e.preventDefault();f.target='_self'}},true)}}catch(e){}}
 </script>
 </body>
 </html>
