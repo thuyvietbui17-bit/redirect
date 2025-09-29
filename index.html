@@ -47,15 +47,29 @@ const doc = frame.contentDocument;
 const win = frame.contentWindow;
 
 if(doc){
-// 移除所有target属性
+// 智能处理链接
 const allLinks = doc.querySelectorAll('a');
 allLinks.forEach(link => {
-link.removeAttribute('target');
+// 只拦截会跳出的链接
+if(link.target === '_blank' || link.target === '_top' || link.target === '_parent'){
+link.target = '_self';
+}
 link.addEventListener('click', function(e) {
+if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
+try{
+const currentDomain = new URL(frame.src).hostname;
+const linkDomain = new URL(this.href).hostname;
+// 只拦截跨域跳转
+if(currentDomain !== linkDomain || this.target === '_blank' || this.target === '_top' || this.target === '_parent'){
 e.preventDefault();
 e.stopPropagation();
-if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
 frame.src = this.href;
+}
+}catch(err){
+// 如果URL解析失败，在iframe内打开
+e.preventDefault();
+frame.src = this.href;
+}
 }
 }, true);
 });
@@ -66,23 +80,45 @@ mutations.forEach(function(mutation) {
 mutation.addedNodes.forEach(function(node) {
 if(node.nodeType === 1) {
 if(node.tagName === 'A') {
-node.removeAttribute('target');
+if(node.target === '_blank' || node.target === '_top' || node.target === '_parent'){
+node.target = '_self';
+}
 node.addEventListener('click', function(e) {
+if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
+try{
+const currentDomain = new URL(frame.src).hostname;
+const linkDomain = new URL(this.href).hostname;
+if(currentDomain !== linkDomain || this.target === '_blank' || this.target === '_top' || this.target === '_parent'){
 e.preventDefault();
 e.stopPropagation();
-if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
 frame.src = this.href;
+}
+}catch(err){
+e.preventDefault();
+frame.src = this.href;
+}
 }
 }, true);
 }
 const links = node.querySelectorAll ? node.querySelectorAll('a') : [];
 links.forEach(link => {
-link.removeAttribute('target');
+if(link.target === '_blank' || link.target === '_top' || link.target === '_parent'){
+link.target = '_self';
+}
 link.addEventListener('click', function(e) {
+if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
+try{
+const currentDomain = new URL(frame.src).hostname;
+const linkDomain = new URL(this.href).hostname;
+if(currentDomain !== linkDomain || this.target === '_blank' || this.target === '_top' || this.target === '_parent'){
 e.preventDefault();
 e.stopPropagation();
-if(this.href && !this.href.startsWith('javascript:') && !this.href.startsWith('mailto:') && !this.href.startsWith('tel:')){
 frame.src = this.href;
+}
+}catch(err){
+e.preventDefault();
+frame.src = this.href;
+}
 }
 }, true);
 });
@@ -92,10 +128,11 @@ frame.src = this.href;
 });
 observer.observe(doc, {childList: true, subtree: true});
 
-// 处理表单
+// 智能处理表单
 const forms = doc.querySelectorAll('form');
 forms.forEach(form => {
-form.removeAttribute('target');
+if(form.target === '_blank' || form.target === '_top' || form.target === '_parent'){
+form.target = '_self';
 form.addEventListener('submit', function(e) {
 e.preventDefault();
 const formData = new FormData(this);
@@ -122,6 +159,7 @@ const params = new URLSearchParams(formData);
 frame.src = action + '?' + params.toString();
 }
 }, true);
+}
 });
 }
 
